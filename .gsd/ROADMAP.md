@@ -16,7 +16,10 @@
 **Requirements**: REQ-01, REQ-02
 
 **Tasks**:
-- [ ] TBD (run /plan 1 to create)
+- [ ] 1.1: Users Dashboard and Backend API (Wave 1)
+- [ ] 1.2: Analytics Dashboard Integration (Wave 2)
 
 **Verification**:
-- [ ] TBD
+- [ ] Analytics arrays are fetched securely from `/api/analytics` endpoint.
+- [ ] Network tab doesn't reveal user password hashes in JSON payload responses.
+- [ ] Dashboard views appropriately switch in DOM and call APIs seamlessly.
