@@ -16,6 +16,14 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(cors());
 app.use(express.json());
+// Catch and handle malformed JSON gracefully
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+        console.error('Malformed JSON received:', err.message);
+        return res.status(400).json({ error: 'Bad Request - Invalid JSON' });
+    }
+    next(err);
+});
 app.use(express.urlencoded({ extended: true }));
 
 // Session configuration
@@ -88,6 +96,14 @@ app.use((err, req, res, next) => {
     console.error('SERVER ERROR CAUGHT:');
     console.error(err.stack || err);
     res.status(500).json({ error: 'Internal server error' });
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('UNHANDLED REJECTION:', reason);
 });
 
 // Start server
