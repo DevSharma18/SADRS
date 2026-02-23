@@ -3,24 +3,27 @@
 > **Status**: `FINALIZED`
 
 ## Vision
-To restore access to the ATM CCTV Monitoring System by resolving the critical backend authentication bug that is preventing valid credentials from working.
+Expand the recently secured CCTV Monitoring backend by connecting realistic API responses and frontend views for Live Feeds, ATM Management, Analytics, Settings, User Management, Map functionality, and all other remaining un-built dashboard pages.
 
 ## Goals
-1. Identify and fix the root cause of the broken login sequence (which currently results in an "Internal Server Error").
-2. Verify that the default administrator credentials successfully authenticate the user and grant access to the main dashboard.
+1. Activate the missing views in the sidebar (Analytics, Map, ATM Management, Users, Live Feeds, Logs, Threats, Settings).
+2. Create or finalize API routes for those functionalities in the Express backend.
+3. Replace the frontend placeholders with robust data-fetching capabilities that appropriately display data from the API endpoint responses using `API_BASE` fetch wrappers.
 
 ## Non-Goals (Out of Scope)
-- Implementing new authentication mechanisms (e.g., OAuth, JWT).
-- Modifying the frontend dashboard layout or behavior.
-- Altering the Python ML microservice.
+- Making major design or CSS changes (keep it consistent with existing styles).
+- Touching the ML microservice application logic or Python components.
+- Changing authentication mechanisms.
 
 ## Users
-Security operators and administrators who need to access the CCTV monitoring dashboard.
+Security operators and administrators using the ATM CCTV dashboard. 
 
 ## Constraints
-- Must maintain the existing `express-session` and `bcrypt` architecture.
-- Fix must not disrupt existing WebSocket connections or other API routes.
+- Do not introduce breaking changes to the frontend structure. Use the current layout.
+- Maintain error-resilient fetches returning intuitive user responses on failures.
+- Preserve real-time sockets behaviors. 
 
 ## Success Criteria
-- [ ] User can successfully log in via the `http://localhost:3001` portal using `admin`/`admin123`.
-- [ ] The Node.js backend processes the login request and issues a session cookie without throwing an exception.
+- [ ] Users can navigate through all sidebar sub-pages dynamically without a 404 or page load error.
+- [ ] Analytics, Live Feeds, Maps, and User pages fetch correctly mocked standard data points from the `/api/` Node paths.
+- [ ] The app manages UI transitions successfully and maintains session states between tabs.
