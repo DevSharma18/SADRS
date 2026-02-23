@@ -4,7 +4,7 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3001' 
 // Load Analytics Page
 async function loadAnalytics(container) {
     try {
-        const analyticsHTML = await fetch(${API_BASE}/pages/analytics.html').then(r => r.text());
+        const analyticsHTML = await fetch(`${API_BASE}/pages/analytics.html`).then(r => r.text());
         container.innerHTML = analyticsHTML;
 
         // Initialize charts after DOM is loaded
@@ -104,7 +104,7 @@ function initializeCharts() {
 // Load Map Page
 async function loadMap(container) {
     try {
-        const mapHTML = await fetch(${API_BASE}/pages/map.html').then(r => r.text());
+        const mapHTML = await fetch(`${API_BASE}/pages/map.html`).then(r => r.text());
         container.innerHTML = mapHTML;
 
         // Initialize map markers
@@ -120,10 +120,10 @@ async function loadMap(container) {
 // Render map markers
 async function renderMapMarkers() {
     try {
-        const response = await fetch(${API_BASE}/api/atms');
+        const response = await fetch(`${API_BASE}/api/atms`);
         const atms = await response.json();
 
-        const alertsResponse = await fetch(${API_BASE}/api/alerts?status=active');
+        const alertsResponse = await fetch(`${API_BASE}/api/alerts?status=active`);
         const alerts = await alertsResponse.json();
 
         const markersContainer = document.getElementById('mapMarkers');
@@ -150,7 +150,7 @@ async function renderMapMarkers() {
 // Show ATM sidebar
 async function showATMSidebar(atmId) {
     try {
-        const response = await fetch(`/api/atms/${atmId}`);
+        const response = await fetch(`${API_BASE}/api/atms/${atmId}`);
         const atm = await response.json();
 
         const sidebar = document.getElementById('atmDetailsSidebar');
@@ -226,7 +226,7 @@ function fitAllMarkers() {
 // Load Users Page
 async function loadUsers(container) {
     try {
-        const usersHTML = await fetch(${API_BASE}/pages/users.html').then(r => r.text());
+        const usersHTML = await fetch(`${API_BASE}/pages/users.html`).then(r => r.text());
         container.innerHTML = usersHTML;
 
         setTimeout(() => {
@@ -312,7 +312,7 @@ function deleteUser(userId) {
 // Export alerts to CSV
 async function exportAlertsCSV() {
     try {
-        const response = await fetch(${API_BASE}/api/alerts');
+        const response = await fetch(`${API_BASE}/api/alerts`);
         const alerts = await response.json();
 
         // Create CSV content

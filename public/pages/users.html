@@ -1,0 +1,60 @@
+<!-- User Management Page -->
+<div class="page-header">
+    <h2>User Management</h2>
+    <p>Manage system users and permissions</p>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        <h3 class="table-title">System Users</h3>
+        <div class="table-actions">
+            <button class="btn btn-sm btn-primary" onclick="showAddUserModal()">+ Add User</button>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Created At</th>
+                    <th>Last Login</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="usersTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div id="addUserModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add New User</h3>
+            <button onclick="closeAddUserModal()" class="modal-close">&times;</button>
+        </div>
+        <form id="addUserForm" onsubmit="addUser(event)">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="newUsername" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="newPassword" required>
+            </div>
+            <div class="form-group">
+                <label>Role</label>
+                <select id="newUserRole">
+                    <option value="operator">Operator</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: var(--spacing-md); justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeAddUserModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add User</button>
+            </div>
+        </form>
+    </div>
+</div>

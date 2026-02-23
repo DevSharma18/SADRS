@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Check authentication status
 async function checkAuth() {
     try {
-        const response = await fetch(${API_BASE}/api/auth/check');
+        const response = await fetch(`${API_BASE}/api/auth/check`);
         const data = await response.json();
 
         if (data.authenticated) {
@@ -48,7 +48,7 @@ function setupLoginForm() {
         const errorDiv = document.getElementById('loginError');
 
         try {
-            const response = await fetch(${API_BASE}/api/auth/login', {
+            const response = await fetch(`${API_BASE}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
@@ -155,15 +155,15 @@ async function loadPage(page) {
 async function loadDashboard(container) {
     try {
         // Fetch stats
-        const statsResponse = await fetch(${API_BASE}/api/stats');
+        const statsResponse = await fetch(`${API_BASE}/api/stats`);
         app.stats = await statsResponse.json();
 
         // Fetch active alerts
-        const alertsResponse = await fetch(${API_BASE}/api/alerts?status=active');
+        const alertsResponse = await fetch(`${API_BASE}/api/alerts?status=active`);
         app.alerts = await alertsResponse.json();
 
         // Fetch active threats
-        const threatsResponse = await fetch(${API_BASE}/api/threats?status=active');
+        const threatsResponse = await fetch(`${API_BASE}/api/threats?status=active`);
         const activeThreats = await threatsResponse.json();
 
         container.innerHTML = `
@@ -276,7 +276,7 @@ function renderAlerts() {
 // Load Live Feed
 async function loadLiveFeed(container) {
     try {
-        const response = await fetch(${API_BASE}/api/cameras');
+        const response = await fetch(`${API_BASE}/api/cameras`);
         app.cameras = await response.json();
 
         container.innerHTML = `
@@ -353,7 +353,7 @@ async function filterCameras() {
     const atmFilter = document.getElementById('atmFilter').value;
 
     try {
-        let url = '/api/cameras?';
+        let url = `${API_BASE}/api/cameras?`;
         if (statusFilter) url += `status=${statusFilter}&`;
         if (atmFilter) url += `atm_id=${atmFilter}&`;
 
@@ -369,7 +369,7 @@ async function filterCameras() {
 // Load ATM Management
 async function loadATMManagement(container) {
     try {
-        const response = await fetch(${API_BASE}/api/atms');
+        const response = await fetch(`${API_BASE}/api/atms`);
         app.atms = await response.json();
 
         container.innerHTML = `
@@ -415,7 +415,7 @@ async function loadATMManagement(container) {
 // Load Logs
 async function loadLogs(container) {
     try {
-        const response = await fetch(${API_BASE}/api/logs?limit=50');
+        const response = await fetch(`${API_BASE}/api/logs?limit=50`);
         app.logs = await response.json();
 
         container.innerHTML = `
@@ -489,7 +489,7 @@ async function filterLogs() {
     const severity = document.getElementById('severityFilter').value;
 
     try {
-        let url = '/api/logs?limit=50';
+        let url = `${API_BASE}/api/logs?limit=50`;
         if (eventType) url += `&event_type=${eventType}`;
         if (severity) url += `&severity=${severity}`;
 
@@ -513,7 +513,7 @@ async function filterLogs() {
 // Load Settings
 async function loadSettings(container) {
     try {
-        const response = await fetch(${API_BASE}/api/settings');
+        const response = await fetch(`${API_BASE}/api/settings`);
         app.settings = await response.json();
 
         container.innerHTML = `
@@ -569,7 +569,7 @@ async function saveSettings() {
             notification_enabled: document.getElementById('notification_enabled').checked.toString()
         };
 
-        const response = await fetch(${API_BASE}/api/settings', {
+        const response = await fetch(`${API_BASE}/api/settings`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(settings)
@@ -587,7 +587,7 @@ async function saveSettings() {
 // Alert actions
 async function resolveAlert(id) {
     try {
-        await fetch(`/api/alerts/${id}`, {
+        await fetch(`${API_BASE}/api/alerts/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'resolved' })
@@ -600,7 +600,7 @@ async function resolveAlert(id) {
 
 async function dismissAlert(id) {
     try {
-        await fetch(`/api/alerts/${id}`, {
+        await fetch(`${API_BASE}/api/alerts/${id}`, {
             method: 'DELETE'
         });
         refreshAlerts();
@@ -618,7 +618,7 @@ async function refreshAlerts() {
 // View ATM details
 async function viewATMDetails(id) {
     try {
-        const response = await fetch(`/api/atms/${id}`);
+        const response = await fetch(`${API_BASE}/api/atms/${id}`);
         const atm = await response.json();
 
         alert(`ATM Details:\n\nID: ${atm.id}\nLocation: ${atm.location}\nAddress: ${atm.address}\nStatus: ${atm.status}\nCameras: ${atm.cameras.length}\nRecent Alerts: ${atm.alerts.length}`);
@@ -672,7 +672,7 @@ function initializeWebSocket() {
 // Logout
 async function logout() {
     try {
-        await fetch(${API_BASE}/api/auth/logout', { method: 'POST' });
+        await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST' });
         app.currentUser = null;
         if (app.socket) {
             app.socket.disconnect();
@@ -716,7 +716,7 @@ async function analyzeCamera(cameraId, atmId) {
     if (badgeDiv) badgeDiv.innerHTML = '<span style="color:var(--text-muted)">Analyzing...</span>';
 
     try {
-        const response = await fetch(${API_BASE}/api/analyze', {
+        const response = await fetch(`${API_BASE}/api/analyze`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ camera_id: cameraId, atm_id: atmId })
@@ -760,7 +760,7 @@ async function analyzeCamera(cameraId, atmId) {
 // Threats Page
 async function loadThreats(container) {
     try {
-        const response = await fetch(${API_BASE}/api/threats');
+        const response = await fetch(`${API_BASE}/api/threats`);
         app.threats = await response.json();
 
         container.innerHTML = `
@@ -815,7 +815,7 @@ async function loadThreats(container) {
 
 async function updateThreatStatus(id, status) {
     try {
-        await fetch(${API_BASE}/api/threats/' + id, {
+        await fetch(`${API_BASE}/api/threats/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status })

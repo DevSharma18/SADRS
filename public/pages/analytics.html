@@ -1,0 +1,75 @@
+<!-- Analytics Page -->
+<div class="page-header">
+    <h2>Analytics & Insights</h2>
+    <p>Visual analytics and performance metrics</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">Avg Response Time</span>
+            <div class="stat-card-icon" style="background: rgba(59, 130, 246, 0.2); color: var(--accent-primary);">⏱️
+            </div>
+        </div>
+        <div class="stat-card-value">2.3m</div>
+        <div class="stat-card-change">↓ 15% from last week</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">Alerts Resolved</span>
+            <div class="stat-card-icon" style="background: rgba(16, 185, 129, 0.2); color: var(--success);">✓</div>
+        </div>
+        <div class="stat-card-value">94%</div>
+        <div class="stat-card-change">↑ 5% from last week</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">Uptime</span>
+            <div class="stat-card-icon" style="background: rgba(34, 197, 94, 0.2); color: var(--success);">📊</div>
+        </div>
+        <div class="stat-card-value">99.8%</div>
+        <div class="stat-card-change">Last 30 days</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">Incidents</span>
+            <div class="stat-card-icon" style="background: rgba(239, 68, 68, 0.2); color: var(--error);">⚡</div>
+        </div>
+        <div class="stat-card-value">12</div>
+        <div class="stat-card-change">This month</div>
+    </div>
+</div>
+
+<!-- Charts Container -->
+<div
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: var(--spacing-lg); margin-bottom: var(--spacing-xl);">
+    <div class="table-container">
+        <div class="table-header">
+            <h3 class="table-title">Alert Trends (Last 7 Days)</h3>
+        </div>
+        <div style="padding: var(--spacing-xl);">
+            <canvas id="alertsChart" style="max-height: 300px;"></canvas>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div class="table-header">
+            <h3 class="table-title">Alerts by Severity</h3>
+        </div>
+        <div style="padding: var(--spacing-xl);">
+            <canvas id="severityChart" style="max-height: 300px;"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        <h3 class="table-title">Camera Uptime by Location</h3>
+    </div>
+    <div style="padding: var(--spacing-xl);">
+        <canvas id="uptimeChart" style="max-height: 300px;"></canvas>
+    </div>
+</div>
