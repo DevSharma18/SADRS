@@ -13,6 +13,35 @@ const app = {
     settings: {}
 };
 
+// Global Toast logic
+window.showToast = function (msg, type = 'info') {
+    const toast = document.createElement('div');
+    const bg = type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : '#3b82f6');
+    toast.style.cssText = `
+        position: fixed; bottom: 20px; right: 20px; background: ${bg}; color: white;
+        padding: 12px 20px; border-radius: 4px; z-index: 10000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: opacity 0.3s;
+    `;
+    toast.innerHTML = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+};
+
+// Global Fetch Interceptor
+const originalFetch = window.fetch;
+window.fetch = async function () {
+    try {
+        const response = await originalFetch.apply(this, arguments);
+        if (!response.ok && response.status !== 401 && response.status !== 404) {
+            showToast(`API Error: ${response.statusText}`, 'error');
+        }
+        return response;
+    } catch (err) {
+        showToast(`Network Error: Backend unreachable`, 'error');
+        throw err;
+    }
+};
+
 // Initialize app on load
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
@@ -633,6 +662,16 @@ function initializeWebSocket() {
 
     app.socket.on('connect', () => {
         console.log('WebSocket connected');
+        showToast('Real-time connection established', 'success');
+    });
+
+    app.socket.on('disconnect', () => {
+        console.log('WebSocket disconnected');
+        showToast('Real-time connection lost. Reconnecting...', 'error');
+    });
+
+    app.socket.on('connect_error', (error) => {
+        console.error('WebSocket connection error:', error);
     });
 
     app.socket.on('alert_update', (data) => {
@@ -824,4 +863,43 @@ async function updateThreatStatus(id, status) {
     } catch (e) {
         console.error(e);
     }
+}
+
+// Placeholder for Analytics
+async function loadAnalytics(container) {
+    container.innerHTML = `
+        <div class="page-header">
+            <h2>Analytics</h2>
+            <p>System analytics overview</p>
+        </div>
+        <div class="card" style="padding: 2rem; text-align: center;">
+            <p style="color: var(--text-muted);">Analytics dashboard is under construction.</p>
+        </div>
+    `;
+}
+
+// Placeholder for Map
+async function loadMap(container) {
+    container.innerHTML = `
+        <div class="page-header">
+            <h2>Location Map</h2>
+            <p>Geographical distribution of ATMs</p>
+        </div>
+        <div class="card" style="padding: 2rem; text-align: center;">
+            <p style="color: var(--text-muted);">Interactive map is under construction.</p>
+        </div>
+    `;
+}
+
+// Placeholder for Users
+async function loadUsers(container) {
+    container.innerHTML = `
+        <div class="page-header">
+            <h2>User Management</h2>
+            <p>Manage system access and roles</p>
+        </div>
+        <div class="card" style="padding: 2rem; text-align: center;">
+            <p style="color: var(--text-muted);">User management is under construction.</p>
+        </div>
+    `;
 }
