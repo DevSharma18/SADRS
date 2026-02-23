@@ -26,7 +26,10 @@
 **Depends on**: Phase 2
 
 **Tasks**:
-- [ ] TBD (run /plan 3 to create)
+- [ ] 3.1: Audit and Connect Frontend to Backend (Wave 1)
+- [ ] 3.2: Error Handling & Resilience (Wave 2)
 
 **Verification**:
-- [ ] TBD
+- [ ] No frontend API calls result in unhandled errors (except expected rejections).
+- [ ] Real-time updates push successfully from backend to frontend.
+- [ ] App remains functional when API is down.
