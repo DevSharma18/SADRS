@@ -1,0 +1,818 @@
+
+
+========================================
+FILE: SADRS_Webcam_Simulation_Plan.docx
+========================================
+
+SADRS
+Webcam CCTV Simulation — Implementation Plan
+System Webcam  |  ML Behavioral Detection  |  Claude Sonnet 4.6  |  Full Feature Simulation
+
+Simulation Overview
+This plan describes how to build a fully functional local simulation of the SADRS CCTV Monitoring pipeline using your system's built-in webcam. The webcam replaces the IP camera that would be installed at an ATM in production. Everything else — ML behavioral detection, Claude Sonnet 4.6 AI analysis, simulated alerts, evidence clip saving, and a live dashboard — runs exactly as it would in the real deployment.
+
+This simulation serves as Phase 2 of the SADRS implementation: proving the AI detection pipeline works before any hardware procurement or ATM deployment begins.
+
+Item
+Detail
+Video Source
+System webcam (USB or built-in) accessed via OpenCV VideoCapture(0)
+Simulated Location
+Your desk/room acts as the 'ATM vestibule' scene
+ML Model
+YOLOv8-nano (pre-trained COCO) → fine-tuned on threat classes
+AI Analysis
+Claude Sonnet 4.6 via Anthropic API — generates incident summaries
+Alert Simulation
+Console logs + desktop notifications + local JSON incident log
+Evidence Clips
+30-second rolling buffer saved as .mp4 on local disk on threat detect
+Dashboard
+Local Flask web server — view live feed, incidents, stats in browser
+Panic PIN Sim
+Keyboard hotkey 'P' simulates a customer entering the panic PIN
+Tamper Sim
+Keyboard hotkey 'T' simulates vibration sensor threshold breach
+OS Support
+Windows 10/11, macOS 12+, Ubuntu 22.04+
+
+Webcam → Production Component Mapping
+Every hardware component in the real SADRS system has a direct simulation equivalent running on your laptop. The logic, data flows, and AI pipelines are identical — only the physical source differs.
+
+Production Component
+Webcam Simulation Equivalent
+What Stays the Same
+IP Camera (1080p) at ATM
+System webcam (built-in / USB)
+OpenCV frame capture, FPS, inference pipeline — identical
+Raspberry Pi 4 (edge compute)
+Your laptop CPU
+Python threads, TFLite inference, decision logic — identical
+Arduino + Sensor Array
+Keyboard hotkeys (P, T, S keys)
+Threat signal format sent to threat engine — identical
+MEMS Vibration Sensor
+'T' key press simulates tamper trigger
+Threshold evaluation, corroboration logic — identical
+ATM Keypad (Panic PIN)
+'P' key press simulates panic PIN entry
+Hash check, decoy response, alert trigger — identical
+GSM Module (SIM800C)
+Console print + desktop notification + log file
+Alert payload format, police SMS content — identical
+Servo/Solenoid Door Lock
+On-screen 'LOCKDOWN ACTIVE' overlay + log entry
+Lock state machine, release logic — identical
+Bank HQ Dashboard (remote)
+Local Flask dashboard at localhost:5000
+Incident cards, clip viewer, stats — identical
+S3 Cloud Clip Upload
+Local /evidence/ folder on disk
+Clip extraction, encryption, metadata JSON — identical
+Claude Sonnet 4.6 API
+Same — live Anthropic API call from your machine
+100% identical — real AI analysis on real webcam frames
+
+Simulation System Architecture
+The simulation runs as a multi-threaded Python application. Four parallel threads handle different concerns simultaneously, just as they would on a Raspberry Pi in production. All threads share a central ThreatState object that acts as the source of truth for the current alert status.
+
+Thread
+Responsibility
+Input
+Output
+Thread 1
+CCTV Capture
+Reads webcam frames at 15–30 FPS; feeds ring buffer and inference queue
+Webcam device (cv2.VideoCapture)
+Frame queue + 30s ring buffer
+Thread 2
+ML Inference
+Runs YOLOv8/TFLite on each frame; tracks consecutive threat detections
+Frame queue from Thread 1
+Detection events → ThreatEngine
+Thread 3
+Input Monitor
+Listens for keyboard hotkeys (P, T, R, Q, S); simulates sensor signals
+Keyboard input (pynput / keyboard lib)
+Panic/Tamper signals → ThreatEngine
+Thread 4
+Alert Manager
+Watches ThreatEngine; on confirmed threat dispatches all alert channels
+ThreatEngine confirmed-threat events
+Logs, clips, Claude API, dashboard update
+
+Data Flow — Webcam to Alert
+Below is the exact data flow from webcam pixel to alert dispatch. This flow is identical to what runs in production on a Raspberry Pi with a real ATM camera.
+
+Step
+What Happens
+1
+Webcam opens at 640×480, 15–30 FPS via OpenCV VideoCapture(0). Each frame is read into a NumPy array and timestamped.
+2
+Frame is resized to 640×640 and normalized (0–1 float32). Written into the 30-second rolling frame buffer (replaces pre-alert CCTV clip).
+3
+Frame is placed in the ML inference queue. Thread 2 picks it up and runs YOLOv8-nano TFLite inference. Output: list of (class_id, confidence, bbox) per frame.
+4
+ThreatEngine receives detection result. If class is in threat list (loiter, weapon, crowd, mask, aggressive): increment consecutive-frame counter. If counter ≥ 3: raise internal ThreatFlag.
+5
+ThreatEngine checks corroboration: did 'T' hotkey fire (tamper sim) OR did PIR sim trigger within the last 10 seconds? If yes → CONFIRMED THREAT. If no → flag held for 10 seconds pending corroboration.
+6
+AlertManager wakes on CONFIRMED THREAT event. Simultaneously: (a) extracts 30s pre-alert clip from ring buffer + 10s post-alert, saves encrypted .mp4 to /evidence/ folder. (b) Writes incident JSON to local log. (c) Activates on-screen LOCKDOWN overlay on the webcam window.
+7
+AlertManager calls Claude Sonnet 4.6 API with incident payload (threat class, confidence, timestamp, simulated sensor snapshot). Claude returns a 3-sentence incident summary.
+8
+Dashboard (Flask/SocketIO) receives incident push via WebSocket. Browser at localhost:5000 shows new incident card with Claude summary, clip link, threat class, confidence, and simulated GPS coordinates.
+9
+Console prints simulated GSM SMS text: 'ALERT: ATM-SIM-001 | Threat: {class} | Confidence: {score}% | GPS: {coords} | Time: {ts}'. This is exactly what the SIM800C would send in production.
+10
+Operator presses 'R' to reset alert state. ThreatEngine clears all flags. Incident marked as 'Awaiting Review' in dashboard. System resumes normal monitoring.
+
+ML Model — Webcam Detection Plan
+Model Selection for Simulation
+Two options are available depending on how quickly you want to start. Option A uses a pre-trained model for immediate results. Option B involves fine-tuning for production-quality detection accuracy.
+
+Option
+Model
+Pros
+Cons
+Option A
+(Fast Start)
+YOLOv8-nano — COCO pretrained (80 classes, includes person, backpack, etc.)
+Zero training needed; runs on any laptop CPU; start in 1 day
+No ATM-specific classes; loitering & aggression not detected natively
+Option B
+(Full)
+YOLOv8-nano — Custom fine-tuned on 6 ATM threat classes
+Full SADRS threat class coverage; matches production model exactly
+Requires dataset collection + 3–5 days of training effort
+
+Recommendation: Start with Option A to validate the full pipeline end-to-end within Day 1. Transition to Option B (fine-tuned model) in Phase 2 Week 2 once the pipeline is confirmed working.
+
+Threat Classes — Webcam Simulation
+For webcam simulation, the 6 SADRS threat classes are tested using yourself and household objects in front of the camera. Each class has a clear simulation method.
+
+Class
+SADRS Definition
+Webcam Simulation Method
+Expected Model Behavior
+NORMAL
+Customer doing standard transaction
+Sit in front of camera, natural posture, brief presence
+No flag raised; monitoring continues
+LOITER
+Person present >90 sec without action
+Remain seated/standing in frame for 2+ minutes without moving
+Flag raised after 90s of continuous 'person' detection
+WEAPON
+Object matching firearm/blade profile
+Hold a toy gun, kitchen knife, or ruler toward camera
+YOLO 'knife' class OR fine-tuned weapon class triggers flag
+CROWD
+Multiple persons in single ATM booth
+Have 2+ people visible in webcam frame simultaneously
+Multiple 'person' bounding boxes detected in same frame
+MASK/HOOD
+Face fully obscured in odd hours
+Wear a balaclava, scarf over face, or motorcycle helmet
+Face-occlusion heuristic: person detected, face not detected
+AGGRESSIVE
+Rapid movement, pushing, gesticulation
+Make sudden arm-swinging, jumping, or rapid head/arm movements
+High motion delta between consecutive frames + large bbox shift
+
+Detection Decision Logic
+The threat engine applies the same multi-layer confirmation logic whether the source is a webcam or a real ATM camera. No shortcuts are taken in the simulation — this is intentional so that the same code can be deployed to production unchanged.
+
+Logic Layer
+Rule
+Layer 1
+Frame Confirm
+Threat class must appear in ≥ 3 consecutive frames at ≥ 0.55 confidence. Single-frame detections are ignored entirely. This eliminates motion-blur false triggers.
+Layer 2
+Corroboration
+CCTV threat flag must be accompanied by at least one corroborating signal within 10 seconds: 'T' hotkey (tamper sim), OR PIR simulation trigger, OR a second distinct threat class flagged simultaneously.
+Layer 3
+Time Weighting
+Between 11 PM and 5 AM, the confidence threshold for Layer 1 drops from 0.55 to 0.45, and the corroboration window extends from 10 to 20 seconds. This makes the system more sensitive during high-risk hours.
+Layer 4
+Human Override
+Bank operator can press 'D' to dismiss a confirmed threat (marks incident as false positive in log). Dismissed incidents feed the model retraining pipeline. Operator can also press 'E' to escalate, which upgrades alert to Priority 1.
+Layer 5
+Cooldown
+After an alert fires, a 120-second cooldown prevents repeated alerts for the same ongoing event. Cooldown can be manually reset with 'R'. New distinct threat classes bypass the cooldown.
+
+Phase-by-Phase Implementation Plan
+
+P1
+ENVIRONMENT SETUP & WEBCAM PIPELINE    Days 1–3  ·  CORE
+
+Goal
+Get the webcam streaming, captured frame-by-frame into Python, and displayed in a live window with a basic overlay. Validate that OpenCV can access your webcam correctly and that the frame rate is acceptable for inference.
+
+#
+Task ID
+Task Description
+Inputs / Outputs
+Duration
+Tag
+1
+T1.1
+Verify webcam access: confirm OpenCV can open VideoCapture(0) and read frames at ≥ 15 FPS on your machine
+IN: System webcam  OUT: FPS benchmark print in console
+2 hrs
+CORE
+2
+T1.2
+Set capture resolution to 640×480 (balanced for inference speed vs quality); confirm stable stream
+IN: VideoCapture settings  OUT: Stable 640×480 feed
+1 hr
+CORE
+3
+T1.3
+Build the 30-second rolling frame buffer: circular array of timestamped frames; auto-discards oldest
+IN: Raw frames  OUT: Buffer object with extract_clip() method
+3 hrs
+CORE
+4
+T1.4
+Build the live display window: show webcam feed with status bar overlay (timestamp, FPS, current state)
+IN: Frames + ThreatState  OUT: Named OpenCV window
+2 hrs
+CORE
+5
+T1.5
+Implement keyboard listener thread: map Q/P/T/R/S/D/E keys to simulation events
+IN: Keyboard input  OUT: Event signals to ThreatEngine
+2 hrs
+CORE
+6
+T1.6
+Build ThreatState object: shared dataclass holding current alert level, active flags, cooldown timer
+IN: Events from all threads  OUT: Thread-safe state object
+2 hrs
+CORE
+7
+T1.7
+Validate full capture loop: webcam → buffer → display → keyboard control all running in parallel threads
+IN: All above modules  OUT: Stable multi-threaded pipeline
+2 hrs
+CORE
+
+Phase 1 Exit Gate
+Webcam streams at ≥ 15 FPS in a live window with status overlay
+30-second buffer fills correctly; extract_clip() returns correct frame sequence
+All keyboard shortcuts respond without crashing or freezing the display
+All 4 threads run stably for ≥ 5 minutes without memory leak
+
+P2
+ML MODEL INTEGRATION    Days 4–8  ·  AI
+
+Goal
+Load a YOLOv8-nano model (COCO pretrained for Option A, or fine-tuned for Option B) and run live inference on every webcam frame. Visualize bounding boxes on the live window and print class + confidence to console. Validate detection quality before wiring to the alert system.
+
+#
+Task ID
+Task Description
+Inputs / Outputs
+Duration
+Tag
+1
+T2.1
+Download YOLOv8-nano COCO pretrained weights (ultralytics/yolov8n.pt, ~6MB). Verify SHA256 checksum.
+IN: Ultralytics download  OUT: model file on disk
+30 min
+AI
+2
+T2.2
+Load model and run single-frame inference test on a static image: verify output format (boxes, classes, confs)
+IN: yolov8n.pt + test image  OUT: Verified detection output dict
+1 hr
+AI
+3
+T2.3
+Wire model inference into Thread 2: read from frame queue, run inference, write results to detection queue
+IN: Frame queue  OUT: Detection result queue
+3 hrs
+AI
+4
+T2.4
+Draw bounding boxes and class labels on live webcam frames; color-code by SADRS threat class mapping
+IN: Detections + frame  OUT: Annotated display frame
+2 hrs
+AI
+5
+T2.5
+Map COCO class IDs to SADRS threat classes: 'person' → base for LOITER/CROWD/AGGRESSIVE; 'knife' → WEAPON
+IN: COCO class list  OUT: SADRS class mapping config
+1 hr
+AI
+6
+T2.6
+Implement LOITER timer: track per-person-bbox duration; flag LOITER if same-position person detected >90 consecutive seconds
+IN: Detection stream  OUT: LOITER flag when threshold exceeded
+4 hrs
+AI
+7
+T2.7
+Implement CROWD detection: count unique person bboxes per frame; flag CROWD if count ≥ 2 simultaneously
+IN: Detection stream  OUT: CROWD flag
+2 hrs
+AI
+8
+T2.8
+Implement AGGRESSIVE motion: compute optical flow delta between consecutive frames; flag if motion magnitude exceeds threshold
+IN: Consecutive frames  OUT: AGGRESSIVE flag
+4 hrs
+AI
+9
+T2.9
+Implement MASK heuristic: person bbox detected but face landmark NOT detected (MediaPipe face mesh); flag if sustained
+IN: Person bbox + face mesh  OUT: MASK flag
+3 hrs
+AI
+10
+T2.10
+Implement the 3-frame confirmation logic in ThreatEngine: accumulate class flags; fire ThreatFlag only after 3 consecutive hits
+IN: Per-frame class flags  OUT: ThreatFlag events
+2 hrs
+AI
+11
+T2.11
+Test all 6 threat classes manually in front of webcam; document detection rate, confidence range, false trigger notes
+IN: Manual test scenarios  OUT: Validation test report
+3 hrs
+AI
+
+Option B: Fine-Tuning Plan (if proceeding beyond Option A)
+Collect 200+ images per class using your webcam — simulate each scenario, snapshot frames
+Label using Roboflow or LabelImg: draw bboxes, assign SADRS class names
+Export dataset in YOLOv8 format (YAML + images/labels folders)
+Fine-tune YOLOv8-nano for 50 epochs on Google Colab (free T4 GPU) — estimated 2 hours
+Export best.pt → convert to TFLite FP16 using tflite_convert for production parity
+Run same T2.11 validation; target mAP ≥ 70% on held-out 20% of dataset
+
+Phase 2 Exit Gate
+All 6 threat classes detectable in front of webcam with visible bounding boxes
+3-frame confirmation fires correctly and not on single-frame glitches
+Inference runs at ≥ 8 FPS (acceptable for detection; 15 FPS for display)
+No persistent false positives on a clean 5-minute idle webcam scene
+
+P3
+CORROBORATION ENGINE + SIMULATED SENSORS    Days 9–11  ·  CORE
+
+Goal
+Wire the ThreatEngine corroboration layer: a CCTV detection alone is NOT enough to trigger a full alert. It must be corroborated by a sensor signal (simulated via keyboard). This phase also simulates the Panic PIN and Tamper sensor pipelines.
+
+#
+Task ID
+Task Description
+Inputs / Outputs
+Duration
+Tag
+1
+T3.1
+Build corroboration logic in ThreatEngine: hold ThreatFlag for 10 seconds; if corroborating signal arrives within window → CONFIRMED
+IN: ThreatFlag + sensor events  OUT: CONFIRMED_THREAT event
+3 hrs
+CORE
+2
+T3.2
+Wire 'T' key to tamper signal: generates a SensorEvent(type=VIBRATION, value=simulated_g_force) into ThreatEngine
+IN: 'T' keypress  OUT: SensorEvent into corroboration window
+1 hr
+SIM
+3
+T3.3
+Wire 'P' key to Panic PIN flow: bypasses corroboration (panic PIN is self-corroborating); fires CONFIRMED_THREAT immediately with trigger_type=PANIC_PIN
+IN: 'P' keypress  OUT: Instant CONFIRMED_THREAT (type=PANIC_PIN)
+2 hrs
+SIM
+4
+T3.4
+Implement decoy response for Panic PIN: display 'Transaction Processing...' on overlay for 5 seconds before showing LOCKDOWN — simulates ATM behaving normally
+IN: PANIC_PIN event  OUT: Delayed overlay + background alert
+2 hrs
+SIM
+5
+T3.5
+Implement PIR simulation: random PIR trigger fires every 45–120 seconds during LOITER scenario to simulate real sensor data
+IN: LOITER flag active  OUT: Random SensorEvent(type=PIR) injected
+1 hr
+SIM
+6
+T3.6
+Implement time-context weighting: check system clock; if 11PM–5AM, lower confidence threshold (0.55→0.45) and extend corroboration window (10s→20s)
+IN: System time  OUT: Adjusted ThreatEngine parameters
+1 hr
+CORE
+7
+T3.7
+Build cooldown manager: after CONFIRMED_THREAT, suppress repeat alerts for 120 seconds; 'R' key resets; distinct new class bypasses
+IN: CONFIRMED_THREAT + clock  OUT: Alert suppression control
+2 hrs
+CORE
+8
+T3.8
+End-to-end corroboration test: trigger CCTV flag only → confirm no alert fires after 10s. Then add 'T' press → confirm CONFIRMED_THREAT fires
+IN: Manual test  OUT: Validated corroboration behavior
+2 hrs
+CORE
+
+Phase 3 Exit Gate
+CCTV flag alone does NOT trigger full alert (held for 10-second corroboration window)
+'T' key within 10 seconds of CCTV flag → CONFIRMED ALERT fires
+'P' key fires immediate PANIC_PIN alert with decoy overlay sequence
+Cooldown correctly suppresses duplicate alerts for 120 seconds
+
+P4
+CLAUDE SONNET 4.6 AI INTEGRATION    Days 12–14  ·  AI
+
+Goal
+On every CONFIRMED_THREAT event, call the Claude Sonnet 4.6 API with a structured incident payload. Receive a human-readable incident summary and a compressed SMS alert text. Display on dashboard. Test quality and latency across all 6 threat classes.
+
+#
+Task ID
+Task Description
+Inputs / Outputs
+Duration
+Tag
+1
+T4.1
+Install Anthropic Python SDK; configure API key from environment variable ANTHROPIC_API_KEY (never hardcoded)
+IN: API key in .env  OUT: Working SDK import + test ping
+30 min
+AI
+2
+T4.2
+Design the incident summary system prompt: role-lock Claude as 'ATM Security Incident Analyst'; specify 3-sentence output format
+IN: Prompt design  OUT: Finalized system prompt string in config.py
+1 hr
+AI
+3
+T4.3
+Build incident payload builder: assembles dict with atm_id, location, timestamp, trigger_type, threat_class, confidence, simulated sensor values, system time context
+IN: CONFIRMED_THREAT event  OUT: Structured incident payload dict
+2 hrs
+AI
+4
+T4.4
+Build claude_analyst module: takes incident payload → formats prompt → calls Claude Sonnet 4.6 (model: claude-sonnet-4-6, max_tokens: 1024, temp: 0.2) → returns summary string
+IN: Incident payload  OUT: 3-sentence incident summary string
+3 hrs
+AI
+5
+T4.5
+Build SMS text generator: separate Claude call (max_tokens: 80) asking for ≤160-char compressed alert for GSM simulation
+IN: Incident payload  OUT: ≤160 char SMS string
+1 hr
+AI
+6
+T4.6
+Implement 10-second timeout + fallback: if Claude API exceeds 10 seconds, use template: 'THREAT DETECTED: {class} at {time}. Confidence: {score}%. Review required.'
+IN: API call result / timeout  OUT: Summary string (live or fallback)
+1 hr
+AI
+7
+T4.7
+Implement response cache: hash (threat_class + hour_of_day + atm_zone) → cache Claude response for 5 minutes to avoid redundant API calls during repeated similar alerts
+IN: Incident payload  OUT: Cached or fresh summary
+2 hrs
+AI
+8
+T4.8
+Test all 6 threat class summaries: manually trigger each; review Claude output for accuracy, tone, and actionability; iterate prompt if needed
+IN: 6 manual triggers  OUT: 6 quality-reviewed summaries logged
+2 hrs
+AI
+9
+T4.9
+Measure Claude API latency over 20 calls; confirm p95 < 10 seconds; log token usage for cost estimation
+IN: 20 API calls  OUT: Latency log + cost estimate in console
+1 hr
+AI
+
+Phase 4 Exit Gate
+Every CONFIRMED_THREAT triggers a Claude Sonnet 4.6 call and returns a valid summary
+SMS alert text generated and printed to console in ≤ 160 characters
+Timeout fallback works correctly when API is slow or unavailable
+Claude latency p95 < 10 seconds across 20 consecutive test calls
+Token usage cost confirmed acceptable (estimate: ~$0.015 per incident summary)
+
+P5
+EVIDENCE CLIP EXTRACTION + LOCAL STORAGE    Days 15–16  ·  CORE
+
+Goal
+When a CONFIRMED_THREAT fires, automatically extract the 30 seconds of webcam footage before the alert (from the ring buffer) plus 10 seconds after, encode it as an MP4 file, and save it to the local /evidence/ folder. Simulate the AES-256 encryption step used in production.
+
+#
+Task ID
+Task Description
+Inputs / Outputs
+Duration
+Tag
+1
+T5.1
+Build clip_extractor module: on CONFIRMED_THREAT, reads last 30 seconds from ring buffer + continues capturing 10 seconds post-alert
+IN: Ring buffer + CONFIRMED_THREAT event  OUT: List of frames (30+10 seconds)
+3 hrs
+CORE
+2
+T5.2
+Encode frame list to .mp4 using OpenCV VideoWriter at native FPS; filename format: YYYYMMDD_HHMMSS_{threat_class}_{confidence}.mp4
+IN: Frame list  OUT: .mp4 file in /evidence/ folder
+2 hrs
+CORE
+3
+T5.3
+Simulate AES-256 encryption: encrypt .mp4 bytes with a local key stored in /keys/ folder; save as .mp4.enc; store key separately (simulates S3 KMS in production)
+IN: .mp4 file  OUT: .mp4.enc encrypted file
+2 hrs
+CORE
+4
+T5.4
+Write incident JSON metadata file alongside each clip: incident_id, timestamp, trigger_type, threat_class, confidence, sensor_snapshot, claude_summary, clip_filename
+IN: Incident data + clip filename  OUT: .json metadata file per incident
+2 hrs
+CORE
+5
+T5.5
+Build evidence index: maintain /evidence/index.json with list of all incidents; dashboard reads this file to populate incident log
+IN: Each new incident JSON  OUT: Updated index.json
+1 hr
+CORE
+6
+T5.6
+Test clip quality: review extracted .mp4 clips; confirm 30-second pre-alert footage is captured correctly and encoded without corruption
+IN: Manual trigger + review  OUT: Validated clip files
+1 hr
+CORE
+
+Phase 5 Exit Gate
+Every CONFIRMED_THREAT produces a valid .mp4 clip in /evidence/ within 5 seconds of alert
+Clip contains correct 30s pre-alert + 10s post-alert footage
+Encrypted .mp4.enc file created; decryption with correct key restores original
+Incident JSON metadata correct and complete for every clip
+Evidence index.json updated correctly after each incident
+
+P6
+LOCAL DASHBOARD (FLASK + WEBSOCKET)    Days 17–20  ·  CORE
+
+Goal
+Build a local web dashboard at localhost:5000 that receives real-time incident pushes via WebSocket (Socket.IO), displays the live webcam feed, shows incident cards with Claude summaries, lists evidence clips, and allows operator actions (confirm/dismiss/escalate).
+
+#
+Task ID
+Task Description
+Inputs / Outputs
+Duration
+Tag
+1
+T6.1
+Set up Flask app with flask-socketio; configure CORS for localhost; create basic HTML template with Tailwind CDN
+IN: Flask + socket.io setup  OUT: Working localhost:5000 home page
+2 hrs
+CORE
+2
+T6.2
+Stream live webcam JPEG frames to dashboard via MJPEG endpoint (/video_feed): Flask generates multipart JPEG stream from capture thread
+IN: Webcam frames  OUT: Live feed visible in browser <img> tag
+3 hrs
+CORE
+3
+T6.3
+Build incident card component (HTML/JS): displays trigger type badge, threat class, confidence bar, timestamp, Claude summary, and action buttons (Confirm / Dismiss / Escalate)
+IN: Incident JSON via socket  OUT: Rendered incident card in browser
+4 hrs
+CORE
+4
+T6.4
+Wire SocketIO events: on CONFIRMED_THREAT, Python backend emits 'new_incident' event with full incident payload; JS frontend appends new card to feed
+IN: CONFIRMED_THREAT event  OUT: Real-time card appears in browser
+3 hrs
+CORE
+5
+T6.5
+Build evidence clip viewer: incident card 'View Clip' button opens modal with HTML5 video player playing the .mp4 clip directly from /evidence/ folder (served as static)
+IN: Clip filename in incident JSON  OUT: In-browser video playback
+3 hrs
+CORE
+6
+T6.6
+Build simulated ATM status panel: show ATM-SIM-001 with green/amber/red status dot, uptime counter, current threat level, last alert timestamp
+IN: ThreatState  OUT: Status panel updating every 2 seconds
+2 hrs
+CORE
+7
+T6.7
+Build simulated GSM alert log: scrolling list of SMS texts that would be sent to police (from Phase 4 SMS generator), timestamped
+IN: SMS strings from claude_analyst  OUT: Scrolling SMS log panel
+1 hr
+SIM
+8
+T6.8
+Build stats panel: total incidents today, false positive rate (dismissed/total), average Claude latency, uptime percentage
+IN: evidence/index.json  OUT: Live stats panel updating per new incident
+2 hrs
+CORE
+9
+T6.9
+Implement operator actions: Confirm / Dismiss / Escalate buttons POST to Flask API; update incident JSON metadata; emit status update via socket
+IN: Button click  OUT: Updated incident status in JSON + socket broadcast
+2 hrs
+CORE
+10
+T6.10
+Full dashboard integration test: run complete pipeline; trigger 3 incidents manually; confirm all appear in real-time with correct data on dashboard
+IN: Manual triggers  OUT: All 3 incidents with clips and Claude summaries visible
+2 hrs
+CORE
+
+Phase 6 Exit Gate
+Live webcam feed visible at localhost:5000 without lag
+Incident cards appear in real-time within 5 seconds of CONFIRMED_THREAT
+Claude summary text correct and readable on each card
+Evidence clip plays in browser without download
+Confirm/Dismiss/Escalate actions persist to JSON and update UI
+GSM SMS log shows correct simulated police alert text
+
+P7
+END-TO-END VALIDATION & SCENARIO TESTING    Days 21–23  ·  SIM
+
+Goal
+Run structured test scenarios covering all 6 threat classes, all 3 trigger pipelines (CCTV, Panic PIN, Tamper), and all failure modes. Document results. This is the simulation equivalent of the Phase 3 integration test in the full implementation plan.
+
+#
+Scenario
+Steps
+Pass Criteria
+S1
+LOITER Detection
+Stand in front of webcam for 2 minutes without moving
+LOITER flag fires after 90s; CONFIRMED after 'T' press; dashboard card appears; clip saved
+S2
+WEAPON Detection
+Hold kitchen knife visible to camera for 5+ seconds
+WEAPON class detected in 3 frames; alert fires with correct class; Claude names 'weapon' in summary
+S3
+CROWD Detection
+Have 2 people visible in webcam simultaneously for 10 seconds
+CROWD flag fires; corroboration from 'T'; incident logged with trigger_type=ML_CCTV
+S4
+MASK / Face Occlusion
+Cover face with scarf and stay in frame for 20 seconds
+MASK heuristic fires after 3 confirmed frames; alert dispatched; overlay shows LOCKDOWN
+S5
+AGGRESSIVE Motion
+Wave arms rapidly and jump in front of webcam for 5 seconds
+AGGRESSIVE class fires from optical flow; 3-frame confirm; alert within 15 seconds
+S6
+Panic PIN Flow
+Press 'P' key
+Decoy overlay shows for 5 seconds; LOCKDOWN fires; alert type = PANIC_PIN; no corroboration needed
+S7
+Tamper Only (no CCTV)
+Press 'T' key with clean webcam scene (no threat)
+Tamper event logged but NO full alert — corroboration logic: tamper alone insufficient without CCTV flag
+S8
+CCTV Only (no corroborate)
+Trigger LOITER flag; wait 10 seconds without pressing 'T'
+ThreatFlag expires after 10-second window; NO alert fires; flag cleared in ThreatEngine
+S9
+Claude Timeout Fallback
+Disconnect internet; trigger any threat
+10-second timeout hit; fallback template summary shown on dashboard; alert not blocked
+S10
+Cooldown Behavior
+Trigger any threat; immediately trigger again within 120 seconds
+Second alert suppressed by cooldown; console logs 'Cooldown active'; 'R' key resets correctly
+S11
+Operator Dismiss
+Trigger threat; click 'Dismiss' on dashboard
+Incident marked dismissed in index.json; false positive counter increments in stats panel
+S12
+Night-Mode Threshold
+Manually set system time to 2 AM in config; trigger LOITER at 0.47 confidence
+Alert fires (night threshold 0.45 active); would not fire at same confidence in day mode
+
+Phase 7 Exit Gate
+All 12 scenarios pass their stated criteria
+Zero unintended alerts on clean 10-minute idle webcam scene
+All clips saved correctly for every triggered incident
+Dashboard remains stable and responsive across all 12 scenario runs
+Simulation declared READY for demo and Phase 4 hardware transition
+
+Full Timeline Summary
+Phase
+Days
+Focus
+Key Output
+P1
+Days 1–3
+Environment Setup & Webcam Pipeline
+Stable webcam stream, frame buffer, keyboard controls
+P2
+Days 4–8
+ML Model Integration
+Live threat detection with bounding boxes on webcam feed
+P3
+Days 9–11
+Corroboration Engine + Simulated Sensors
+Multi-layer threat confirmation; Panic PIN + Tamper sims
+P4
+Days 12–14
+Claude Sonnet 4.6 AI Integration
+AI incident summaries + SMS text generation per alert
+P5
+Days 15–16
+Evidence Clip Extraction + Local Storage
+Auto-extracted .mp4 clips + encrypted + JSON metadata
+P6
+Days 17–20
+Local Dashboard (Flask + WebSocket)
+Live browser dashboard with incidents, clips, and stats
+P7
+Days 21–23
+End-to-End Validation & Scenario Testing
+All 12 test scenarios pass; simulation demo-ready
+TOTAL
+23 Days
+Full Webcam CCTV Simulation
+Production-equivalent pipeline validated on laptop
+
+Python Dependencies
+All packages installable via pip. No hardware drivers required for simulation. Estimated total install size: ~2.1 GB (primarily PyTorch/ultralytics).
+
+Package
+Version
+Purpose in SADRS Simulation
+opencv-python
+4.9+
+Webcam capture, frame processing, bounding box drawing, VideoWriter (clips)
+ultralytics
+8.1+
+YOLOv8-nano model loading, inference, and TFLite export
+anthropic
+0.25+
+Claude Sonnet 4.6 API calls for incident summaries and SMS text
+flask
+3.0+
+Dashboard web server and REST API for operator actions
+flask-socketio
+5.3+
+Real-time WebSocket push of incident events to browser dashboard
+pynput
+1.7+
+Keyboard listener for simulation hotkeys (P, T, R, Q, S, D, E)
+cryptography
+42+
+AES-256-GCM encryption of evidence clips (Fernet or raw AES)
+mediapipe
+0.10+
+Face landmark detection for MASK/face-occlusion heuristic
+numpy
+1.26+
+Frame array manipulation, optical flow delta computation
+pillow
+10+
+Frame conversion between OpenCV BGR and PIL for MJPEG streaming
+python-dotenv
+1.0+
+Load ANTHROPIC_API_KEY from .env file safely
+dataclasses-json
+0.6+
+Serialize ThreatState and incident payloads to/from JSON
+
+Transition: Simulation → Production ATM
+Once the simulation passes all Phase 7 scenarios, transitioning to a real ATM deployment requires only hardware substitutions. The Python codebase is unchanged.
+
+Simulation Component
+Production Replacement
+Code Change Required
+VideoCapture(0) — laptop webcam
+VideoCapture('rtsp://...') — ATM IP camera RTSP stream
+Change one config value: CAMERA_SOURCE in config.py
+'P' keyboard hotkey
+GPIO pin read from ATM keypad + hash verification
+Replace keyboard listener with RPi.GPIO pin event handler
+'T' keyboard hotkey
+Arduino serial data from MEMS + tilt sensors
+Replace keyboard listener with PySerial read from Arduino
+Console print (GSM simulation)
+SIM800C AT commands via PySerial UART
+Replace print() with gsm_send() function using PySerial
+On-screen LOCKDOWN overlay
+RPi GPIO relay → servo/solenoid lock actuation
+Add GPIO.output() call alongside the existing overlay
+localhost:5000 dashboard
+Same Flask app, accessible on bank LAN or via VPN
+Change FLASK_HOST from 127.0.0.1 to 0.0.0.0
+/evidence/ local folder
+boto3 S3 upload to AWS bucket
+Replace local file write with S3 put_object() call
+Static GPS in config
+GPSd daemon reading from USB GPS module
+Replace config GPS with gpsd-py3 library read
+
+Key insight: because the simulation was designed to be production-equivalent from Day 1, the transition to a real ATM is purely a hardware wiring exercise. The ML model, threat engine, corroboration logic, Claude integration, clip extraction, and dashboard are all deployed unchanged.
+
+SADRS Webcam Simulation Implementation Plan  |  Claude Sonnet 4.6 Powered  |  Smart India Hackathon 2024

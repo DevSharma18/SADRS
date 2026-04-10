@@ -1,0 +1,11 @@
+Flask
+Flask-SQLAlchemy
+Flask-SocketIO
+anthropic
+python-dotenv
+PyJWT
+cryptography
+Werkzeug
+eventlet
+
+Flask-Cors

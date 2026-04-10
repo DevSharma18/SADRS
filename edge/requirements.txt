@@ -1,0 +1,7 @@
+requests
+bcrypt
+opencv-python
+ultralytics
+pynput
+
+python-dotenv
